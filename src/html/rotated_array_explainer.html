@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: transparent; color: #3d3d3a; }
+
+        .container { padding: 1rem 0; }
+
+        .step-nav { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+        .step-pill { padding: 5px 14px; font-size: 12px; border: 0.5px solid #B4B2A9; border-radius: 20px; cursor: pointer; background: transparent; color: #5F5E5A; transition: all .15s; }
+        .step-pill.active { background: #EEEDFE; border-color: #7F77DD; color: #3C3489; font-weight: 600; }
+
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        .card { background: #fff; border: 0.5px solid #D3D1C7; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+        @media (prefers-color-scheme: dark) {
+            .card { background: #1a1a18; border-color: #3a3a37; }
+        }
+
+        .card-title { font-size: 13px; font-weight: 600; color: #3C3489; margin-bottom: 10px; letter-spacing: 0.3px; }
+        @media (prefers-color-scheme: dark) { .card-title { color: #CECBF6; } }
+
+        .insight { border-left: 3px solid #7F77DD; padding: 8px 12px; background: #EEEDFE; border-radius: 0 8px 8px 0; margin: 8px 0; font-size: 13px; color: #26215C; line-height: 1.6; }
+        @media (prefers-color-scheme: dark) { .insight { background: #26215C; color: #CECBF6; border-color: #7F77DD; } }
+
+        .warn { border-left: 3px solid #EF9F27; padding: 8px 12px; background: #FAEEDA; border-radius: 0 8px 8px 0; margin: 8px 0; font-size: 13px; color: #633806; line-height: 1.6; }
+        @media (prefers-color-scheme: dark) { .warn { background: #412402; color: #FAC775; border-color: #EF9F27; } }
+
+        .good { border-left: 3px solid #639922; padding: 8px 12px; background: #EAF3DE; border-radius: 0 8px 8px 0; margin: 8px 0; font-size: 13px; color: #3B6D11; line-height: 1.6; }
+        @media (prefers-color-scheme: dark) { .good { background: #173404; color: #C0DD97; border-color: #639922; } }
+
+        /* Array visualizer */
+        .array-wrap { overflow-x: auto; padding: 8px 0; }
+        .array-row { display: flex; gap: 4px; align-items: flex-end; min-width: max-content; padding: 4px; }
+        .arr-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+        .arr-box { width: 44px; height: 44px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; border: 1.5px solid transparent; transition: all .3s; }
+        .arr-idx { font-size: 10px; color: #888780; }
+        .arr-label { font-size: 10px; font-weight: 600; margin-top: 2px; height: 14px; }
+
+        /* Default cell colors */
+        .cell-normal { background: #F1EFE8; border-color: #B4B2A9; color: #3d3d3a; }
+        .cell-sorted-left { background: #E1F5EE; border-color: #5DCAA5; color: #085041; }
+        .cell-sorted-right { background: #EEEDFE; border-color: #AFA9EC; color: #26215C; }
+        .cell-pivot { background: #FAECE7; border-color: #D85A30; color: #4A1B0C; }
+        .cell-lo { background: #EAF3DE; border-color: #97C459; color: #173404; }
+        .cell-hi { background: #FAEEDA; border-color: #EF9F27; color: #412402; }
+        .cell-mid { background: #EEEDFE; border-color: #7F77DD; color: #26215C; }
+        .cell-target { background: #FAECE7; border-color: #D85A30; color: #4A1B0C; }
+        .cell-found { background: #EAF3DE; border-color: #639922; color: #173404; }
+        .cell-eliminated { background: #F1EFE8; border-color: #D3D1C7; color: #B4B2A9; opacity: 0.5; }
+
+        @media (prefers-color-scheme: dark) {
+            .cell-normal { background: #2c2c2a; border-color: #5F5E5A; color: #D3D1C7; }
+            .cell-sorted-left { background: #04342C; border-color: #1D9E75; color: #9FE1CB; }
+            .cell-sorted-right { background: #26215C; border-color: #7F77DD; color: #CECBF6; }
+            .cell-pivot { background: #4A1B0C; border-color: #D85A30; color: #F5C4B3; }
+            .cell-lo { background: #173404; border-color: #639922; color: #C0DD97; }
+            .cell-hi { background: #412402; border-color: #EF9F27; color: #FAC775; }
+            .cell-mid { background: #26215C; border-color: #7F77DD; color: #CECBF6; }
+            .cell-target { background: #4A1B0C; border-color: #D85A30; color: #F5C4B3; }
+            .cell-found { background: #173404; border-color: #639922; color: #C0DD97; }
+            .cell-eliminated { opacity: 0.35; }
+        }
+
+        .legend { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+        .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #5F5E5A; }
+        .legend-dot { width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid; }
+
+        /* Question box */
+        .question { background: #EEEDFE; border: 0.5px solid #AFA9EC; border-radius: 10px; padding: 12px 14px; margin: 10px 0; font-size: 13px; color: #26215C; line-height: 1.7; }
+        @media (prefers-color-scheme: dark) { .question { background: #26215C; border-color: #534AB7; color: #CECBF6; } }
+        .question strong { font-weight: 700; font-size: 15px; display: block; margin-bottom: 4px; }
+
+        /* Decision tree */
+        .decision { background: #F1EFE8; border-radius: 10px; padding: 12px; margin: 8px 0; }
+        @media (prefers-color-scheme: dark) { .decision { background: #2c2c2a; } }
+        .d-row { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; font-size: 12px; line-height: 1.6; color: #3d3d3a; border-bottom: 0.5px solid #D3D1C7; }
+        .d-row:last-child { border-bottom: none; }
+        @media (prefers-color-scheme: dark) { .d-row { color: #D3D1C7; border-color: #3a3a37; } }
+        .d-cond { min-width: 180px; font-weight: 600; color: #534AB7; }
+        @media (prefers-color-scheme: dark) { .d-cond { color: #AFA9EC; } }
+        .d-action { color: #3B6D11; }
+        @media (prefers-color-scheme: dark) { .d-action { color: #C0DD97; } }
+
+        /* Controls */
+        .controls { display: flex; align-items: center; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+        button.ctrl { padding: 6px 16px; font-size: 12px; font-weight: 600; border: 0.5px solid #B4B2A9; border-radius: 6px; cursor: pointer; background: transparent; color: #3d3d3a; transition: all .15s; }
+        button.ctrl:hover { background: #F1EFE8; }
+        button.ctrl.primary { background: #EEEDFE; border-color: #7F77DD; color: #3C3489; }
+        @media (prefers-color-scheme: dark) {
+            button.ctrl { color: #D3D1C7; border-color: #5F5E5A; }
+            button.ctrl:hover { background: #2c2c2a; }
+            button.ctrl.primary { background: #26215C; border-color: #7F77DD; color: #CECBF6; }
+        }
+        .step-counter { font-size: 12px; color: #888780; }
+
+        .code-block { font-family: 'Courier New', monospace; font-size: 12px; background: #F1EFE8; border-radius: 8px; padding: 12px 14px; line-height: 1.8; color: #3d3d3a; border: 0.5px solid #D3D1C7; margin: 8px 0; overflow-x: auto; white-space: pre; }
+        @media (prefers-color-scheme: dark) { .code-block { background: #2c2c2a; border-color: #3a3a37; color: #D3D1C7; } }
+        .kw { color: #534AB7; font-weight: 600; }
+        .cm { color: #888780; font-style: italic; }
+        .fn { color: #0F6E56; }
+        .hl { background: #FAEEDA; border-radius: 2px; padding: 0 2px; }
+        @media (prefers-color-scheme: dark) { .hl { background: #412402; } }
+
+        .nav-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="step-nav" id="pills">
+        <button class="step-pill active" onclick="goTo(0)">1 · What is Rotation?</button>
+        <button class="step-pill" onclick="goTo(1)">2 · The Key Insight</button>
+        <button class="step-pill" onclick="goTo(2)">3 · Decision Tree</button>
+        <button class="step-pill" onclick="goTo(3)">4 · Live Walkthrough</button>
+        <button class="step-pill" onclick="goTo(4)">5 · Find Minimum</button>
+        <button class="step-pill" onclick="goTo(5)">6 · Cheat Sheet</button>
+    </div>
+
+    <!-- ── Panel 0: What is Rotation ─────────────────────────────── -->
+    <div class="panel active" id="p0">
+        <div class="card">
+            <div class="card-title">What does "rotated" mean?</div>
+            <p style="font-size:13px;color:#5F5E5A;line-height:1.7;margin-bottom:10px;">Start with a perfectly sorted array. Now pick any pivot point and rotate — move the right chunk to the front.</p>
+            <div class="array-wrap">
+                <p style="font-size:11px;color:#888780;margin-bottom:6px;">Original sorted:</p>
+                <div class="array-row">
+                    <div class="arr-cell"><div class="arr-box cell-sorted-left">1</div><div class="arr-idx">0</div></div>
+                    <div class="arr-cell"><div class="arr-box cell-sorted-left">3</div><div class="arr-idx">1</div></div>
+                    <div class="arr-cell"><div class="arr-box cell-sorted-left">5</div><div class="arr-idx">2</div></div>
+                    <div class="arr-cell"><div class="arr-box cell-sorted-left">7</div><div class="arr-idx">3</div></div>
+                    <div class="arr-cell"><div class="arr-box cell-sorted-left">9</div><div class="arr-idx">4</div></div>
+                    <div class="arr-cell"><div class="arr-box cell-sorted-left">11</div><div class="arr-idx">5</div></div>
+                    <div class="arr-cell"><div class="arr-box cell-sorted-left">13</div><div class="arr-idx">6</div></div>
+                </div>
+            </div>
+            <div style="text-align:center;font-size:20px;color:#D85A30;margin:6px 0;">↓ rotated at index 4</div>
+            <div class="array-wrap">
+                <p style="font-size:11px;color:#888780;margin-bottom:6px;">After rotation:</p>
+                <div class="array-row">
+                    <div class="arr-cell"><div class="arr-box cell-sorted-right">9</div><div class="arr-idx">0</div><div class="arr-label" style="color:#0F6E56">→ was idx 4</div></div>
+                    <div class="arr-cell"><div class="arr-box cell-sorted-right">11</div><div class="arr-idx">1</div></div>
+                    <div class="arr-cell"><div class="arr-box cell-sorted-right">13</div><div class="arr-idx">2</div></div>
+                    <div class="arr-cell"><div class="arr-box cell-pivot">1</div><div class="arr-idx">3</div><div class="arr-label" style="color:#D85A30">PIVOT ↓</div></div>
+                    <div class="arr-cell"><div class="arr-box cell-sorted-left">3</div><div class="arr-idx">4</div></div>
+                    <div class="arr-cell"><div class="arr-box cell-sorted-left">5</div><div class="arr-idx">5</div></div>
+                    <div class="arr-cell"><div class="arr-box cell-sorted-left">7</div><div class="arr-idx">6</div></div>
+                </div>
+            </div>
+            <div class="insight">✅ Even after rotation, <strong>exactly two sorted halves</strong> always exist — one on the left of the pivot, one on the right. Your entire strategy is built on this fact.</div>
+            <div class="legend">
+                <div class="legend-item"><div class="legend-dot" style="background:#EEEDFE;border-color:#AFA9EC"></div> Left sorted half (higher values)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#E1F5EE;border-color:#5DCAA5"></div> Right sorted half (lower values)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#FAECE7;border-color:#D85A30"></div> Pivot (smallest element)</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Panel 1: The Key Insight ──────────────────────────────── -->
+    <div class="panel" id="p1">
+        <div class="card">
+            <div class="card-title">The ONE question that solves everything</div>
+            <div class="question">
+                <strong>🔑 "Which half am I guaranteed sorted?"</strong>
+                When you pick mid — one of the two halves (lo→mid or mid→hi) is <em>always</em> guaranteed to be sorted. Figure out which one, then check if your target lives there.
+            </div>
+            <div style="font-size:13px;color:#5F5E5A;line-height:1.7;margin:10px 0;">How to tell which half is sorted:</div>
+            <div class="array-wrap" style="margin-bottom:10px;">
+                <div class="array-row">
+                    <div class="arr-cell"><div class="arr-box cell-lo">a[lo]</div><div class="arr-idx">lo</div></div>
+                    <div class="arr-cell" style="margin:0 4px;align-self:center;font-size:18px;color:#888780">···</div>
+                    <div class="arr-cell"><div class="arr-box cell-mid">a[mid]</div><div class="arr-idx">mid</div></div>
+                    <div class="arr-cell" style="margin:0 4px;align-self:center;font-size:18px;color:#888780">···</div>
+                    <div class="arr-cell"><div class="arr-box cell-hi">a[hi]</div><div class="arr-idx">hi</div></div>
+                </div>
+            </div>
+            <div class="d-row" style="background:#E1F5EE;border-radius:8px;padding:10px;margin:6px 0;">
+                <div class="d-cond">if a[lo] ≤ a[mid]</div>
+                <div class="d-action">→ LEFT half (lo to mid) is sorted ✅</div>
+            </div>
+            <div class="d-row" style="background:#EEEDFE;border-radius:8px;padding:10px;margin:6px 0;">
+                <div class="d-cond">else</div>
+                <div class="d-action">→ RIGHT half (mid to hi) is sorted ✅</div>
+            </div>
+            <div class="insight" style="margin-top:12px;">This is why <code style="background:#ddd;padding:1px 4px;border-radius:3px;">a[lo] ≤ a[mid]</code> is the core condition of every rotated array solution — it tells you where order is guaranteed.</div>
+            <div class="warn">⚠️ Common mistake: Beginners try to find the pivot first. <strong>You don't need to!</strong> Just check which half is sorted, then eliminate the other half if target isn't in the sorted one.</div>
+        </div>
+    </div>
+
+    <!-- ── Panel 2: Decision Tree ────────────────────────────────── -->
+    <div class="panel" id="p2">
+        <div class="card">
+            <div class="card-title">The 4-step decision tree (memorise this)</div>
+            <div class="question">
+                <strong>Every iteration, ask these 4 questions in order:</strong>
+            </div>
+            <div class="decision">
+                <div class="d-row">
+                    <div style="min-width:20px;font-weight:700;color:#534AB7">1.</div>
+                    <div class="d-cond">a[lo] ≤ a[mid] ?</div>
+                    <div>Left half is sorted (lo→mid). Go to Q2.</div>
+                </div>
+                <div class="d-row" style="padding-left:28px;">
+                    <div style="min-width:20px;font-weight:700;color:#1D9E75">2a.</div>
+                    <div class="d-cond">a[lo] ≤ target &lt; a[mid] ?</div>
+                    <div class="d-action">Target is in left half → hi = mid - 1</div>
+                </div>
+                <div class="d-row" style="padding-left:28px;">
+                    <div style="min-width:20px;font-weight:700;color:#D85A30">2b.</div>
+                    <div class="d-cond">else</div>
+                    <div style="color:#A32D2D">Target NOT in left half → lo = mid + 1</div>
+                </div>
+                <div class="d-row">
+                    <div style="min-width:20px;font-weight:700;color:#534AB7">3.</div>
+                    <div class="d-cond">else (right is sorted)</div>
+                    <div>Right half is sorted (mid→hi). Go to Q4.</div>
+                </div>
+                <div class="d-row" style="padding-left:28px;">
+                    <div style="min-width:20px;font-weight:700;color:#1D9E75">4a.</div>
+                    <div class="d-cond">a[mid] &lt; target ≤ a[hi] ?</div>
+                    <div class="d-action">Target is in right half → lo = mid + 1</div>
+                </div>
+                <div class="d-row" style="padding-left:28px;">
+                    <div style="min-width:20px;font-weight:700;color:#D85A30">4b.</div>
+                    <div class="d-cond">else</div>
+                    <div style="color:#A32D2D">Target NOT in right half → hi = mid - 1</div>
+                </div>
+            </div>
+            <div class="good">💡 The logic is always: <strong>identify the sorted half → check if target is in it → if yes, search there; if no, search the other side.</strong> That's the entire algorithm.</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Python code — clean template</div>
+            <div class="code-block"><span class="kw">def</span> <span class="fn">search</span>(nums, target):
+                lo, hi = 0, len(nums) - 1
+
+                <span class="kw">while</span> lo <= hi:
+                mid = (lo + hi) // 2
+
+                <span class="kw">if</span> nums[mid] == target:
+                <span class="kw">return</span> mid
+
+                <span class="cm"># ── Step 1: Is LEFT half sorted? ──────────────────</span>
+                <span class="kw">if</span> <span class="hl">nums[lo] <= nums[mid]</span>:
+                <span class="cm"># Step 2: Is target inside the sorted left half?</span>
+                <span class="kw">if</span> nums[lo] <= target < nums[mid]:
+                hi = mid - 1   <span class="cm"># target in left → search left</span>
+                <span class="kw">else</span>:
+                lo = mid + 1   <span class="cm"># target not in left → search right</span>
+
+                <span class="cm"># ── Step 3: RIGHT half must be sorted ─────────────</span>
+                <span class="kw">else</span>:
+                <span class="cm"># Step 4: Is target inside the sorted right half?</span>
+                <span class="kw">if</span> nums[mid] < target <= nums[hi]:
+                lo = mid + 1   <span class="cm"># target in right → search right</span>
+                <span class="kw">else</span>:
+                hi = mid - 1   <span class="cm"># target not in right → search left</span>
+
+                <span class="kw">return</span> -1</div>
+        </div>
+    </div>
+
+    <!-- ── Panel 3: Live Walkthrough ─────────────────────────────── -->
+    <div class="panel" id="p3">
+        <div class="card">
+            <div class="card-title">Live walkthrough — search for target = 5 in [9, 11, 13, 1, 3, 5, 7]</div>
+
+            <div id="walk-array" class="array-wrap"></div>
+            <div class="legend" style="margin-top:6px;">
+                <div class="legend-item"><div class="legend-dot" style="background:#EAF3DE;border-color:#97C459"></div> lo</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#EEEDFE;border-color:#7F77DD"></div> mid</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#FAEEDA;border-color:#EF9F27"></div> hi</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#EAF3DE;border-color:#639922"></div> found</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#F1EFE8;border-color:#D3D1C7;opacity:.4"></div> eliminated</div>
+            </div>
+
+            <div id="walk-msg" class="insight" style="min-height:60px;margin:10px 0;font-size:13px;"></div>
+
+            <div class="controls">
+                <button class="ctrl" onclick="walkPrev()">← Prev</button>
+                <button class="ctrl primary" onclick="walkNext()">Next →</button>
+                <button class="ctrl" onclick="walkReset()">↺ Restart</button>
+                <span class="step-counter" id="walk-counter">Step 1 of 7</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Panel 4: Find Minimum ────────────────────────────────── -->
+    <div class="panel" id="p4">
+        <div class="card">
+            <div class="card-title">Variant: Find Minimum (LC #153) — different logic, same insight</div>
+            <div class="insight">Here you're <strong>not searching for a target</strong>. You're searching for the pivot — the point where the array "drops". The insight: <em>if a[mid] &gt; a[hi], the pivot is on the right side.</em></div>
+            <div class="code-block"><span class="kw">def</span> <span class="fn">findMin</span>(nums):
+                lo, hi = 0, len(nums) - 1
+
+                <span class="kw">while</span> lo < hi:       <span class="cm"># note: lo < hi, not lo <= hi</span>
+                mid = (lo + hi) // 2
+
+                <span class="kw">if</span> <span class="hl">nums[mid] > nums[hi]</span>:
+                <span class="cm"># mid is in the LEFT (higher) sorted half</span>
+                <span class="cm"># pivot must be to the RIGHT of mid</span>
+                lo = mid + 1
+                <span class="kw">else</span>:
+                <span class="cm"># mid is in the RIGHT (lower) sorted half</span>
+                <span class="cm"># pivot could BE mid, so don't skip it</span>
+                hi = mid
+
+                <span class="kw">return</span> nums[lo]    <span class="cm"># lo == hi == index of minimum</span></div>
+            <div class="warn">⚠️ Why <code style="padding:1px 4px;background:#ddd;border-radius:3px;">lo &lt; hi</code> instead of <code style="padding:1px 4px;background:#ddd;border-radius:3px;">lo &lt;= hi</code>? Because we never want to go past the answer. When lo==hi, we're AT the minimum.</div>
+            <div class="decision" style="margin-top:10px;">
+                <div class="d-row"><div class="d-cond">a[mid] &gt; a[hi]</div><div>Left half is "the tall part" → minimum is on RIGHT → lo = mid + 1</div></div>
+                <div class="d-row"><div class="d-cond">a[mid] ≤ a[hi]</div><div>Right half is "the short part" → minimum is on LEFT or IS mid → hi = mid</div></div>
+            </div>
+            <div class="good">🧠 Memory trick: <strong>"tall side → go right"</strong>. The minimum always lives at the bottom of the drop. If mid is on the tall (left) hill, slide right.</div>
+        </div>
+    </div>
+
+    <!-- ── Panel 5: Cheat Sheet ──────────────────────────────────── -->
+    <div class="panel" id="p5">
+        <div class="card">
+            <div class="card-title">Cheat sheet — stick this to your wall</div>
+
+            <div class="question" style="margin-bottom:8px;">
+                <strong>Before you write a single line of code, answer:</strong>
+                Am I (A) searching for a value, or (B) finding the minimum/pivot?
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;">
+                <div class="good" style="border-radius:8px;">
+                    <strong style="display:block;margin-bottom:4px;">(A) Search for target</strong>
+                    • Use <code>lo ≤ hi</code><br>
+                    • Check: <code>a[lo] ≤ a[mid]</code><br>
+                    • Find which half is sorted<br>
+                    • Check if target fits in it<br>
+                    • LC #33
+                </div>
+                <div class="insight" style="border-radius:8px;">
+                    <strong style="display:block;margin-bottom:4px;">(B) Find minimum</strong>
+                    • Use <code>lo &lt; hi</code><br>
+                    • Check: <code>a[mid] &gt; a[hi]</code><br>
+                    • "Tall side → go right"<br>
+                    • Return <code>nums[lo]</code><br>
+                    • LC #153
+                </div>
+            </div>
+
+            <div class="card-title" style="margin-top:10px;">3 tips to stop forgetting while solving</div>
+            <div class="decision">
+                <div class="d-row">
+                    <div style="font-size:16px;margin-right:8px;">🖊️</div>
+                    <div><strong>Write the question first.</strong> Before code, write: "Which half is sorted?" on paper. This forces the right mental model every time.</div>
+                </div>
+                <div class="d-row">
+                    <div style="font-size:16px;margin-right:8px;">🔢</div>
+                    <div><strong>Dry-run with [4,5,6,7,0,1,2].</strong> This specific array has 4 elements on the left hill and 3 on the right. Use it for every practice run.</div>
+                </div>
+                <div class="d-row">
+                    <div style="font-size:16px;margin-right:8px;">🧩</div>
+                    <div><strong>Don't find pivot explicitly.</strong> Many students waste 10 min finding the pivot index first. You never need it — just compare a[lo], a[mid], a[hi].</div>
+                </div>
+                <div class="d-row">
+                    <div style="font-size:16px;margin-right:8px;">🔁</div>
+                    <div><strong>Solve LC #153 → LC #33 in that order.</strong> Finding minimum builds the intuition; searching uses it. Never do them in reverse.</div>
+                </div>
+            </div>
+            <div class="warn" style="margin-top:8px;">⚠️ <strong>Duplicates (LC #81):</strong> When <code>a[lo] == a[mid] == a[hi]</code> you can't tell which half is sorted. Only safe move: <code>lo++, hi--</code>. This makes worst case O(n) — that's expected and correct.</div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // ── step nav ────────────────────────────────────────────────────
+    let cur = 0;
+    const panels = document.querySelectorAll('.panel');
+    const pills  = document.querySelectorAll('.step-pill');
+    function goTo(i) {
+        panels.forEach(p => p.classList.remove('active'));
+        pills.forEach(p => p.classList.remove('active'));
+        panels[i].classList.add('active');
+        pills[i].classList.add('active');
+        cur = i;
+        if (i === 3) renderWalk();
+    }
+
+    // ── walkthrough ──────────────────────────────────────────────────
+    const ARR  = [9, 11, 13, 1, 3, 5, 7];
+    const TARGET = 5;
+    let wStep = 0;
+
+    const steps = [
+        { lo:0, hi:6, mid:3, elim:[], msg:"Start: lo=0, hi=6, mid=3 → a[mid]=1, a[lo]=9.\n\nCheck: a[lo]=9 ≤ a[mid]=1? ❌ NO → Right half (mid→hi) is sorted." },
+        { lo:0, hi:6, mid:3, elim:[], move:"lo = mid+1 = 4", msg:"Right half [1,3,5,7] is sorted. Is target(5) in range (a[mid]=1 < 5 ≤ a[hi]=7)? ✅ YES → search right → lo = mid+1 = 4" },
+        { lo:4, hi:6, mid:5, elim:[0,1,2,3], msg:"New: lo=4, hi=6, mid=5 → a[mid]=5.\n\na[mid]=5 == target=5 → ✅ FOUND at index 5!" },
+        { lo:4, hi:6, mid:5, elim:[0,1,2,3], found:5, msg:"✅ Target 5 found at index 5 in just 2 iterations! Classic binary search would also work here, but this approach works even when the array is rotated." },
+    ];
+
+    function renderWalk() {
+        const s = steps[Math.min(wStep, steps.length-1)];
+        const wrap = document.getElementById('walk-array');
+        wrap.innerHTML = '';
+        const row = document.createElement('div');
+        row.className = 'array-row';
+        ARR.forEach((v, i) => {
+            let cls = 'cell-normal';
+            if (s.found === i) cls = 'cell-found';
+            else if (s.elim && s.elim.includes(i)) cls = 'cell-eliminated';
+            else if (i === s.lo)  cls = 'cell-lo';
+            else if (i === s.hi)  cls = 'cell-hi';
+            else if (i === s.mid) cls = 'cell-mid';
+            const labels = [];
+            if (i === s.lo)       labels.push('<span style="color:#3B6D11">lo</span>');
+            if (i === s.mid && s.found !== i) labels.push('<span style="color:#534AB7">mid</span>');
+            if (i === s.hi)       labels.push('<span style="color:#BA7517">hi</span>');
+            if (s.found === i)    labels.push('<span style="color:#639922">✓ found</span>');
+            row.innerHTML += `<div class="arr-cell">
+      <div class="arr-box ${cls}">${v}</div>
+      <div class="arr-idx">[${i}]</div>
+      <div class="arr-label" style="font-size:10px;">${labels.join(' ')}</div>
+    </div>`;
+        });
+        wrap.appendChild(row);
+        document.getElementById('walk-msg').innerHTML = steps[Math.min(wStep, steps.length-1)].msg.replace(/\n/g,'<br>');
+        document.getElementById('walk-counter').textContent = `Step ${wStep+1} of ${steps.length}`;
+    }
+    function walkNext()  { if(wStep < steps.length-1) { wStep++; renderWalk(); } }
+    function walkPrev()  { if(wStep > 0) { wStep--; renderWalk(); } }
+    function walkReset() { wStep = 0; renderWalk(); }
+</script>
+</body>
+</html>
